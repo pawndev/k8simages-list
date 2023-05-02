@@ -75,7 +75,7 @@ func (k *Kube) GetAllImages() []string {
 		k.GetStatefulSet,
 	}
 	var allImages []string
-	var mu sync.RWMutex
+	var mu sync.Mutex
 	var wg sync.WaitGroup
 
 	for _, request := range requestList {

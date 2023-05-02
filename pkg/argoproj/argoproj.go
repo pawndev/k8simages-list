@@ -36,7 +36,7 @@ func (a *Argo) GetAllImages() []string {
 	}
 	var allImages []string
 	var wg sync.WaitGroup
-	var mu sync.RWMutex
+	var mu sync.Mutex
 
 	for _, request := range requestList {
 		wg.Add(1)
