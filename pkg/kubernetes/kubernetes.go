@@ -77,9 +77,9 @@ func (k *Kube) GetAllImages() []string {
 	var allImages []string
 	var mu sync.Mutex
 	var wg sync.WaitGroup
+	wg.Add(len(requestList))
 
 	for _, request := range requestList {
-		wg.Add(1)
 		go func(req ImageFetcher) {
 			defer wg.Done()
 			images := req()

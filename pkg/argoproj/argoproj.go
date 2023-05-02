@@ -37,9 +37,9 @@ func (a *Argo) GetAllImages() []string {
 	var allImages []string
 	var wg sync.WaitGroup
 	var mu sync.Mutex
+	wg.Add(len(requestList))
 
 	for _, request := range requestList {
-		wg.Add(1)
 		go func(req ImageFetcher) {
 			defer wg.Done()
 			images := req()
