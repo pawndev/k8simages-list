@@ -6,12 +6,15 @@ import (
 	"github.com/pawndev/k8simages/pkg/kubernetes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
+	"sync"
 )
 
 type Argo struct {
 	client *argoworkflow.Clientset
 	kube   kubernetes.RestClient
 }
+
+type ImageFetcher func() []string
 
 func New(kube kubernetes.RestClient) *Argo {
 	client, err := argoworkflow.NewForConfig(kube.RestConfig())
@@ -25,11 +28,29 @@ func New(kube kubernetes.RestClient) *Argo {
 }
 
 func (a *Argo) GetAllImages() []string {
+	var requestList = []ImageFetcher{
+		a.GetWorkflowImages,
+		a.GetWorkflowTemplateImages,
+		a.GetClusterWorkflowTemplateImages,
+		a.GetCronWorkflowImages,
+	}
 	var allImages []string
-	allImages = append(allImages, a.GetWorkflowTemplateImages()...)
-	allImages = append(allImages, a.GetCronWorkflowImages()...)
-	allImages = append(allImages, a.GetWorkflowImages()...)
-	allImages = append(allImages, a.GetClusterWorkflowTemplateImages()...)
+	var wg sync.WaitGroup
+	var mu sync.RWMutex
+
+	for _, request := range requestList {
+		wg.Add(1)
+		go func(req ImageFetcher) {
+			defer wg.Done()
+			images := req()
+			mu.Lock()
+			allImages = append(allImages, images...)
+			defer mu.Unlock()
+		}(request)
+	}
+
+	wg.Wait()
+
 	return allImages
 }
 

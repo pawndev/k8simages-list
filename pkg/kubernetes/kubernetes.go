@@ -7,7 +7,10 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"path/filepath"
+	"sync"
 )
+
+type ImageFetcher func() []string
 
 type KubeInformation interface {
 	Namespace() string
@@ -63,13 +66,31 @@ func (k *Kube) Context() string {
 }
 
 func (k *Kube) GetAllImages() []string {
+	var requestList = []ImageFetcher{
+		k.GetJobImages,
+		k.GetDaemonsetImages,
+		k.GetCronjobImages,
+		k.GetPodImages,
+		k.GetDeploymentImages,
+		k.GetStatefulSet,
+	}
 	var allImages []string
-	allImages = append(allImages, k.GetJobImages()...)
-	allImages = append(allImages, k.GetDaemonsetImages()...)
-	allImages = append(allImages, k.GetCronjobImages()...)
-	allImages = append(allImages, k.GetPodImages()...)
-	allImages = append(allImages, k.GetDeploymentImages()...)
-	allImages = append(allImages, k.GetStatefulSet()...)
+	var mu sync.RWMutex
+	var wg sync.WaitGroup
+
+	for _, request := range requestList {
+		wg.Add(1)
+		go func(req ImageFetcher) {
+			defer wg.Done()
+			images := req()
+			mu.Lock()
+			allImages = append(allImages, images...)
+			mu.Unlock()
+		}(request)
+	}
+
+	wg.Wait()
+
 	return allImages
 }
 
