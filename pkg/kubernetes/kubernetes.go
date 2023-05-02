@@ -74,24 +74,25 @@ func (k *Kube) GetAllImages() []string {
 		k.GetDeploymentImages,
 		k.GetStatefulSet,
 	}
-	var allImages []string
-	var mu sync.Mutex
 	var wg sync.WaitGroup
 	wg.Add(len(requestList))
+	p := sync.Pool{New: func() any {
+		return []string{}
+	}}
 
 	for _, request := range requestList {
 		go func(req ImageFetcher) {
 			defer wg.Done()
 			images := req()
-			mu.Lock()
-			allImages = append(allImages, images...)
-			mu.Unlock()
+			all := p.Get().([]string)
+			all = append(all, images...)
+			p.Put(all)
 		}(request)
 	}
 
 	wg.Wait()
 
-	return allImages
+	return p.Get().([]string)
 }
 
 func loadConfigFromPath() *string {
