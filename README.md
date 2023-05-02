@@ -19,7 +19,7 @@ Actually, it supports these `Kind`:
 
 ## Install
 
-You can get the binaray on the release section
+You can get the binary on the release section
 
 Or you can get it with:
 
